@@ -52,8 +52,8 @@ def main():
 
 	imap = login(options)
 
-	print("Collecting old messages...")
-	old_messages = [os.path.basename(filename[0:filename.find(":")]) for filename in os.listdir(destination_dir + "/cur")]
+	print("Discovering local messages...")
+	old_messages = [os.path.basename(filename[0:filename.rfind(":")]) for filename in os.listdir(destination_dir + "/cur")]
 	
 	new_messages = discover_new_messages(imap, old_messages)
 	if len(new_messages) == 0:
