@@ -65,6 +65,12 @@ def main():
 		logout(imap)
 		sys.exit(0)
 
+	try:
+		imap.noop()
+	except IMAP4_SSL.abort:
+		print("Server disconnected us.")
+		imap = login(options)
+
 	download_new_messages(imap, database, new_messages, destination)
 
 	database.close()
