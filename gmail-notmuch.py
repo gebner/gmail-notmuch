@@ -53,7 +53,7 @@ def main():
 	imap = login(options)
 
 	print("Discovering local messages...")
-	old_messages = [os.path.basename(filename[0:filename.rfind(".gmail")]) for filename in os.listdir(destination_dir + "/cur") if filename.contains(".gmail")]
+	old_messages = [os.path.basename(filename[0:filename.rfind(".gmail")]) for filename in os.listdir(destination_dir + "/cur") if ".gmail" in filename]
 
 	new_messages = discover_new_messages(imap, old_messages)
 	if len(new_messages) == 0:
@@ -76,7 +76,7 @@ def login(options):
 	return imap
 
 def discover_new_messages(imap, old_messages):
-	print("Reading message list...")
+	print("Receiving message list...")
 	typ, data = imap.fetch("1:*", "X-GM-MSGID")
 	new_messages = []
 	if typ != "OK":
@@ -97,15 +97,17 @@ def download_new_messages(imap, messages, destination):
 
 	progressbar.start()
 	for gmail_id, imap_seq in messages:
-		typ, data = imap.fetch(str(imap_seq), "RFC822")
-		if typ != "OK":
-			sys.exit("Failed to download message gmail-%d/imap-%d" % (gmail_id, imap_seq))
-
 		temp = destination + "/tmp/" + str(gmail_id) + ".gmail"
 		dest = destination + "/new/" + str(gmail_id) + ".gmail"
-		f = open(temp, "w")
-		f.write(data[0][1])
-		f.close()
+		if not os.path.exists(dest):
+			typ, data = imap.fetch(str(imap_seq), "RFC822")
+			if typ != "OK":
+				sys.exit("Failed to download message gmail-%d/imap-%d" % (gmail_id, imap_seq))
+			f = open(temp, "w")
+			f.write(data[0][1])
+			f.close()
+			os.link(temp, dest) # Because DJB says so...
+			os.unlink(temp)
 
 		typ, data = imap.fetch(str(imap_seq), "(FLAGS X-GM-LABELS)")
 		if typ != "OK":
@@ -113,9 +115,6 @@ def download_new_messages(imap, messages, destination):
 		
 		labels = label_parser.search(data[0]).groups()
 		labels = filter_labels(shlex.split(labels[0], False, True) + labels[1].split(" "))
-
-		os.link(temp, dest) # Because DJB says so...
-		os.unlink(temp)
 
 		database.begin_atomic()
 		message = database.add_message(dest, True)[0]
