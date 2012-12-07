@@ -119,17 +119,22 @@ def tag_message(database, filename, labels):
 def retag_old_messages(database, messages, destination):
 	print("Searching for local messages...")
 	old_messages = { os.path.basename(filename[0:filename.rfind(".gmail")]): destination + "/cur/" + filename for filename in os.listdir(destination + "/cur/") if ".gmail" in filename }
-	print("Retagging %d previous messages..." % len(old_messages))
 	new_messages = []
+	i = 1
+	progressbar = ProgressBar(maxval=len(old_messages), widgets=["Retagging local messages: ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", Timer(), " ", FileTransferSpeed(unit="emails")])
+	progressbar.start()
 	for gmail_id, imap_seq, labels in messages:
 		if gmail_id in old_messages:
 			tag_message(database, old_messages[gmail_id], labels)
+			progressbar.update(i)
+			i += 1
 		else:
 			new_messages.append((gmail_id, imap_seq, labels))
+	progressbar.finish()
 	return new_messages
 
 def download_new_messages(imap, database, messages, destination):
-	i=1
+	i = 1
 	progressbar = ProgressBar(maxval=len(messages), widgets=["Downloading messages: ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", Timer(), " ", FileTransferSpeed(unit="emails")])
 	progressbar.start()
 	for gmail_id, imap_seq, labels in messages:
