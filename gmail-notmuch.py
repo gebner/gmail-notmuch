@@ -53,8 +53,8 @@ def main():
 	imap = login(options)
 
 	print("Discovering local messages...")
-	old_messages = [os.path.basename(filename[0:filename.rfind(":")]) for filename in os.listdir(destination_dir + "/cur")]
-	
+	old_messages = [os.path.basename(filename[0:filename.rfind(".gmail")]) for filename in os.listdir(destination_dir + "/cur") if filename.contains(".gmail")]
+
 	new_messages = discover_new_messages(imap, old_messages)
 	if len(new_messages) == 0:
 		print("Nothing to do!")
@@ -101,8 +101,8 @@ def download_new_messages(imap, messages, destination):
 		if typ != "OK":
 			sys.exit("Failed to download message gmail-%d/imap-%d" % (gmail_id, imap_seq))
 
-		temp = destination + "/tmp/" + str(gmail_id)
-		dest = destination + "/new/" + str(gmail_id)
+		temp = destination + "/tmp/" + str(gmail_id) + ".gmail"
+		dest = destination + "/new/" + str(gmail_id) + ".gmail"
 		f = open(temp, "w")
 		f.write(data[0][1])
 		f.close()
