@@ -41,7 +41,7 @@ def main():
 	parser.add_option("-p", "--password", action="store", type="string", metavar="PASSWORD", help="Gmail password")
 	parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Verbose output")
 	(options, args) = parser.parse_args()
-	if options.username == None or options.password == None:
+	if options.username is None or options.password is None:
 		parser.error("Username and password are required.")
 	if not options.username.lower().endswith("@gmail.com") and not options.username.lower().endswith("@googlemail.com"):
 		options.username += "@gmail.com"
@@ -105,7 +105,7 @@ def tag_message(database, filename, labels):
 	try:
 		database.begin_atomic()
 		message = database.find_message_by_filename(filename)
-		if message == None:
+		if message is None:
 			message = database.add_message(filename, False)[0]
 		message.freeze()
 		message.remove_all_tags(False)
@@ -115,7 +115,7 @@ def tag_message(database, filename, labels):
 		database.end_atomic()
 		message.tags_to_maildir_flags()
 	except Exception as e:
-		if message != None:
+		if message is not None:
 			database.remove_message(message)
 		database.end_atomic()
 		raise e
