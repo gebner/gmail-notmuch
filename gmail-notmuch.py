@@ -47,7 +47,7 @@ def main():
 		options.username += "@gmail.com"
 	if len(args) == 0:
 		parser.error("Maildir location is required.")
-	destination_dir = args[0]
+	destination_dir = os.path.abspath(args[0])
 
 
 	imap = login(options)
