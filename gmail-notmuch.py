@@ -116,13 +116,18 @@ def download_new_messages(imap, messages, destination):
 		labels = label_parser.search(data[0]).groups()
 		labels = filter_labels(shlex.split(labels[0], False, True) + labels[1].split(" "))
 
-		database.begin_atomic()
-		message = database.add_message(dest, True)[0]
-		message.freeze()
-		for tag in labels:
-			message.add_tag(tag, True)
-		message.thaw()
-		database.end_atomic()
+		try:
+			database.begin_atomic()
+			message = database.add_message(dest, True)[0]
+			message.freeze()
+			for tag in labels:
+				message.add_tag(tag, True)
+			message.thaw()
+			database.end_atomic()
+		except Exception as e:
+			database.remove_message(message)
+			database.end_atomic()
+			raise e
 
 		progressbar.update(i)
 		i += 1
