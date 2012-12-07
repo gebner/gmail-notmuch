@@ -104,7 +104,9 @@ def tag_message(database, filename, labels):
 	message = None
 	try:
 		database.begin_atomic()
-		message = database.add_message(filename, False)[0]
+		message = database.find_message_by_filename(filename)
+		if message == None:
+			message = database.add_message(filename, False)[0]
 		message.freeze()
 		message.remove_all_tags(False)
 		for tag in labels:
