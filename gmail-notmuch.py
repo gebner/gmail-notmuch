@@ -47,22 +47,27 @@ def main():
 		options.username += "@gmail.com"
 	if len(args) == 0:
 		parser.error("Maildir location is required.")
-	destination_dir = os.path.abspath(args[0])
 
+	destination = os.path.abspath(args[0])
 
 	imap = login(options)
+	database = notmuch.Database(destination, False, notmuch.Database.MODE.READ_WRITE)
 
-	print("Discovering local messages...")
-	old_messages = [os.path.basename(filename[0:filename.rfind(".gmail")]) for filename in os.listdir(destination_dir + "/cur") if ".gmail" in filename]
-
-	new_messages = discover_new_messages(imap, old_messages)
-	if len(new_messages) == 0:
-		print("Nothing to do!")
+	messages = discover_messages(imap)
+	if len(messages) == 0:
+		print("Discovered no messages!")
 		logout(imap)
 		sys.exit(0)
 	
-	download_new_messages(imap, new_messages, destination_dir)
+	new_messages = retag_old_messages(database, messages, destination)
+	if len(new_messages) == 0:
+		print("Discovered no new messages!")
+		logout(imap)
+		sys.exit(0)
 
+	download_new_messages(imap, database, new_messages, destination)
+
+	database.close()
 	logout(imap)
 
 def login(options):
@@ -75,28 +80,53 @@ def login(options):
 	imap.select("[Gmail]/All Mail", True)
 	return imap
 
-def discover_new_messages(imap, old_messages):
-	print("Receiving message list...")
-	typ, data = imap.fetch("1:*", "X-GM-MSGID")
+def discover_messages(imap):
+	print("Receiving message list and labels (this may take a while)...")
+	parser = re.compile(r'([0-9]+) [(]X-GM-MSGID ([0-9]+) X-GM-LABELS [(](.*)[)] FLAGS [(](.*)[)][)]')
+	typ, data = imap.fetch("1:*", "(FLAGS X-GM-LABELS X-GM-MSGID)")
 	new_messages = []
 	if typ != "OK":
 		sys.exit(("Failed to discover new messages: %s" % typ))
+	print("Parsing message list and labels...")
 	for response in data:
-		imap_seq = response[0:response.find(" ")]
-		gmail_id = response[response.rfind(" ") + 1:len(response) - 1]
-		if gmail_id in old_messages:
-			continue
-		new_messages.append((gmail_id, imap_seq))
+		imap_seq, gmail_id, labels, flags = parser.search(response).groups()
+		labels = filter_labels(shlex.split(labels, False, True) + flags.split(" "))
+		new_messages.append((gmail_id, imap_seq, labels))
 	return new_messages
 
-def download_new_messages(imap, messages, destination):
+def tag_message(database, filename, labels):
+	database.begin_atomic()
+	message = database.add_message(filename, False)[0]
+	try:
+		message.freeze()
+		message.remove_all_tags(False)
+		for tag in labels:
+			message.add_tag(tag, False)
+		message.thaw()
+		database.end_atomic()
+		message.tags_to_maildir_flags()
+	except Exception as e:
+		database.remove_message(message)
+		database.end_atomic()
+		raise e
+
+def retag_old_messages(database, messages, destination):
+	print("Searching for local messages...")
+	old_messages = { os.path.basename(filename[0:filename.rfind(".gmail")]): destination + "/cur/" + filename for filename in os.listdir(destination + "/cur/") if ".gmail" in filename }
+	print("Retagging %d previous messages..." % len(old_messages))
+	new_messages = []
+	for gmail_id, imap_seq, labels in messages:
+		if gmail_id in old_messages:
+			tag_message(database, old_messages[gmail_id], labels)
+		else:
+			new_messages.append((gmail_id, imap_seq, labels))
+	return new_messages
+
+def download_new_messages(imap, database, messages, destination):
 	i=1
 	progressbar = ProgressBar(maxval=len(messages), widgets=["Downloading messages: ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", Timer(), " ", FileTransferSpeed(unit="emails")])
-	label_parser = re.compile(r'[0-9]+ [(]X-GM-LABELS [(](.*)[)] FLAGS [(](.*)[)][)]')
-	database = notmuch.Database(destination, False, notmuch.Database.MODE.READ_WRITE)
-
 	progressbar.start()
-	for gmail_id, imap_seq in messages:
+	for gmail_id, imap_seq, labels in messages:
 		temp = destination + "/tmp/" + str(gmail_id) + ".gmail"
 		dest = destination + "/new/" + str(gmail_id) + ".gmail"
 		if not os.path.exists(dest):
@@ -108,30 +138,9 @@ def download_new_messages(imap, messages, destination):
 			f.close()
 			os.link(temp, dest) # Because DJB says so...
 			os.unlink(temp)
-
-		typ, data = imap.fetch(str(imap_seq), "(FLAGS X-GM-LABELS)")
-		if typ != "OK":
-			sys.exit("Failed to download labels gmail-%d/imap-%d" % (gmail_id, imap_seq))
-		
-		labels = label_parser.search(data[0]).groups()
-		labels = filter_labels(shlex.split(labels[0], False, True) + labels[1].split(" "))
-
-		try:
-			database.begin_atomic()
-			message = database.add_message(dest, True)[0]
-			message.freeze()
-			for tag in labels:
-				message.add_tag(tag, True)
-			message.thaw()
-			database.end_atomic()
-		except Exception as e:
-			database.remove_message(message)
-			database.end_atomic()
-			raise e
-
+		tag_message(database, dest, labels)
 		progressbar.update(i)
 		i += 1
-	database.close()
 	progressbar.finish()
 
 def filter_labels(labels):
@@ -164,7 +173,6 @@ def filter_labels(labels):
 	if "" in ret:
 		ret.remove("")
 	return ret
-			
 
 def logout(imap):
 	imap.close()
