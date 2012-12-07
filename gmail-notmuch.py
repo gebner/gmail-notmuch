@@ -117,11 +117,13 @@ def download_new_messages(imap, messages, destination):
 		os.link(temp, dest) # Because DJB says so...
 		os.unlink(temp)
 
+		database.begin_atomic()
 		message = database.add_message(dest, True)[0]
 		message.freeze()
 		for tag in labels:
 			message.add_tag(tag, True)
 		message.thaw()
+		database.end_atomic()
 
 		progressbar.update(i)
 		i += 1
