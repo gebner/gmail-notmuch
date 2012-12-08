@@ -16,7 +16,7 @@
 # ==============================
 
 
-# $ ./gmail-notmuch.py -u jason.donenfeld -p Shien8Boh2vah ~/Mail/
+# $ ./gmail-notmuch.py -u jason.donenfeld -p Shien8Boh2vah
 # Logging in...
 # Selecting all mail...
 # Receiving message list: 135126 of 135126|##################################################|100% Time: 0:00:52   2.56 kemails/s
@@ -38,7 +38,7 @@ import notmuch
 from progressbar import *
 
 def main():
-	parser = OptionParser(usage="%prog --username/-u USERNAME --password/-p PASSWORD --verbose/-v MAILDIR", description="Slurps gmail messages with labels into a notmuch maildir.")
+	parser = OptionParser(usage="%prog --username/-u USERNAME --password/-p PASSWORD --verbose/-v", description="Slurps gmail messages with labels into a notmuch maildir.")
 	parser.add_option("-u", "--username", action="store", type="string", metavar="USERNAME", help="Gmail username")
 	parser.add_option("-p", "--password", action="store", type="string", metavar="PASSWORD", help="Gmail password")
 	parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Verbose output")
@@ -47,19 +47,22 @@ def main():
 		parser.error("Username and password are required.")
 	if "@" not in options.username:
 		options.username += "@gmail.com"
-	if len(args) == 0:
-		parser.error("Maildir location is required.")
-
-	destination = os.path.abspath(args[0])
-
-	for directory in [destination, destination + "/cur/", destination + "/new/", destination + "/tmp/"]:
+	try:
+		# Create should be True, but there's a bug at the moment.
+		database = notmuch.Database(None, False, notmuch.Database.MODE.READ_WRITE)
+	except notmuch.NotmuchError as e:
+		print(str(e))
+		sys.exit("You must create the notmuch database before running this program.")
+	if database.needs_upgrade():
+		database.upgrade()
+	destination = database.get_path()
+	for directory in ["cur", "new", "tmp"]:
 		try:
-			os.mkdir(directory, 0770)
+			os.mkdir(destination + "/" + directory, 0770)
 		except:
 			pass
 
 	imap, total = login(options)
-	database = notmuch.Database(destination, False, notmuch.Database.MODE.READ_WRITE)
 
 	messages = discover_messages(imap, total)
 	if len(messages) == 0:
