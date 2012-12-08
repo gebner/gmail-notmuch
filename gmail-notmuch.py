@@ -171,6 +171,7 @@ def filter_labels(labels):
 			"\\Deleted":	"deleted",
 			"\\Seen":	"!read!",
 			"\\Important":	None, # I realize this is controversial, but I hate the priority inbox.
+			"\\Muted":	None, # I also don't intend to use the muted idea going forward.
 			"Junk":		"spam",
 			"NonJunk":	None }
 	ret = set()
