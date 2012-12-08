@@ -103,10 +103,15 @@ def discover_messages(imap):
 def tag_message(database, filename, labels):
 	message = None
 	try:
-		database.begin_atomic()
 		message = database.find_message_by_filename(filename)
 		if message is None:
+			database.begin_atomic()
 			message = database.add_message(filename, False)[0]
+		else:
+			if set(labels) == set(message.get_tags()):
+				message.tags_to_maildir_flags()
+				return
+			database.begin_atomic()
 		message.freeze()
 		message.remove_all_tags(False)
 		for tag in labels:
