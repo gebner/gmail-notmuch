@@ -45,7 +45,7 @@ def main():
 	(options, args) = parser.parse_args()
 	if options.username is None or options.password is None:
 		parser.error("Username and password are required.")
-	if not options.username.lower().endswith("@gmail.com") and not options.username.lower().endswith("@googlemail.com"):
+	if "@" not in options.username:
 		options.username += "@gmail.com"
 	if len(args) == 0:
 		parser.error("Maildir location is required.")
@@ -224,4 +224,5 @@ if __name__ == '__main__':
 	try:
 		main()
 	except KeyboardInterrupt:
+		print("")
 		sys.exit(1)
