@@ -47,6 +47,7 @@ def main():
 		parser.error("Username and password are required.")
 	if "@" not in options.username:
 		options.username += "@gmail.com"
+
 	try:
 		# Create should be True, but there's a bug at the moment.
 		database = notmuch.Database(None, False, notmuch.Database.MODE.READ_WRITE)
@@ -94,7 +95,18 @@ def login(options):
 		imap.debug = 10
 	imap.login(options.username, options.password)
 	print("Selecting all mail...")
-	typ, data = imap.select("\"[Gmail]/All Mail\"", True)
+	typ, data = imap.xatom("XLIST", "", "*")
+	if typ != "OK":
+		sys.exit("Could not discover all mail.")
+	allmail = None
+	for label in imap.untagged_responses["XLIST"]:
+		if b"\\AllMail" in label:
+			last_quote = label.rfind("\"")
+			penultimate_quote = label.rfind("\"", 0, last_quote) + 1
+			allmail = label[penultimate_quote:last_quote]
+	if allmail is None:
+		sys.exit("Could not parse all mail.")
+	typ, data = imap.select("\"" + allmail + "\"", True)
 	if typ != "OK":
 		sys.exit("Could not select all mail.")
 	return imap, int(data[0])
