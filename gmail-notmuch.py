@@ -52,6 +52,12 @@ def main():
 
 	destination = os.path.abspath(args[0])
 
+	for directory in [destination, destination + "/cur/", destination + "/new/", destination + "/tmp/"]:
+		try:
+			os.mkdir(directory, 0770)
+		except:
+			pass
+
 	imap, total = login(options)
 	database = notmuch.Database(destination, False, notmuch.Database.MODE.READ_WRITE)
 
