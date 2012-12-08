@@ -85,7 +85,7 @@ def login(options):
 		imap.debug = 10
 	imap.login(options.username, options.password)
 	print("Selecting all mail...")
-	typ, data = imap.select("[Gmail]/All Mail", True)
+	typ, data = imap.select("\"[Gmail]/All Mail\"", True)
 	if typ != "OK":
 		sys.exit("Could not select all mail.")
 	return imap, int(data[0])
@@ -96,7 +96,7 @@ def discover_messages(imap, total):
 	old_readline = imap.readline
 	def new_readline(self):
 		ret = old_readline()
-		if "FETCH (X-GM-MSGID " in ret:
+		if b"FETCH (X-GM-MSGID " in ret:
 			new_readline.progressbar.update(new_readline.i)
 			new_readline.i += 1
 		return ret
@@ -113,7 +113,7 @@ def discover_messages(imap, total):
 
 	print("Parsing message list and labels...")
 	for response in data:
-		imap_seq, gmail_id, labels, flags = parser.search(response).groups()
+		imap_seq, gmail_id, labels, flags = parser.search(str(response)).groups()
 		labels = filter_labels(shlex.split(labels, False, True) + flags.split(" "))
 		new_messages.append((gmail_id, imap_seq, labels))
 	return new_messages
