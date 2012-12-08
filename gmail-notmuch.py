@@ -125,7 +125,7 @@ def retag_old_messages(database, messages, destination):
 	old_messages = { os.path.basename(filename[0:filename.rfind(".gmail")]): destination + "/cur/" + filename for filename in os.listdir(destination + "/cur/") if ".gmail" in filename }
 	new_messages = []
 	i = 1
-	progressbar = ProgressBar(maxval=len(old_messages), widgets=["Retagging local messages: ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", Timer(), " ", FileTransferSpeed(unit="emails")])
+	progressbar = ProgressBar(maxval=len(old_messages), widgets=["Retagging local messages: ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", FileTransferSpeed(unit="emails")])
 	progressbar.start()
 	for gmail_id, imap_seq, labels in messages:
 		if gmail_id in old_messages:
@@ -139,7 +139,7 @@ def retag_old_messages(database, messages, destination):
 
 def download_new_messages(imap, database, messages, destination):
 	i = 1
-	progressbar = ProgressBar(maxval=len(messages), widgets=["Downloading messages: ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", Timer(), " ", FileTransferSpeed(unit="emails")])
+	progressbar = ProgressBar(maxval=len(messages), widgets=["Downloading messages: ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", FileTransferSpeed(unit="emails")])
 	progressbar.start()
 	for gmail_id, imap_seq, labels in messages:
 		temp = destination + "/tmp/" + str(gmail_id) + ".gmail"
