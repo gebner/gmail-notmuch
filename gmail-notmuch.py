@@ -50,10 +50,10 @@ def main():
 
 	destination = os.path.abspath(args[0])
 
-	imap = login(options)
+	imap, total = login(options)
 	database = notmuch.Database(destination, False, notmuch.Database.MODE.READ_WRITE)
 
-	messages = discover_messages(imap)
+	messages = discover_messages(imap, total)
 	if len(messages) == 0:
 		print("Discovered no messages!")
 		logout(imap)
@@ -69,7 +69,7 @@ def main():
 		imap.noop()
 	except IMAP4_SSL.abort:
 		print("Server disconnected us.")
-		imap = login(options)
+		imap, total = login(options)
 
 	download_new_messages(imap, database, new_messages, destination)
 
@@ -83,16 +83,32 @@ def login(options):
 		imap.debug = 10
 	imap.login(options.username, options.password)
 	print("Selecting all mail...")
-	imap.select("[Gmail]/All Mail", True)
-	return imap
+	typ, data = imap.select("[Gmail]/All Mail", True)
+	if typ != "OK":
+		sys.exit("Could not select all mail.")
+	return imap, int(data[0])
 
-def discover_messages(imap):
-	print("Receiving message list and labels (this may take a while)...")
+def discover_messages(imap, total):
 	parser = re.compile(r'([0-9]+) [(]X-GM-MSGID ([0-9]+) X-GM-LABELS [(](.*)[)] FLAGS [(](.*)[)][)]')
+
+	old_readline = imap.readline
+	def new_readline(self):
+		ret = old_readline()
+		if "FETCH (X-GM-MSGID " in ret:
+			new_readline.progressbar.update(new_readline.i)
+			new_readline.i += 1
+		return ret
+	new_readline.i = 1
+	new_readline.progressbar = create_progressbar("Receiving message list", total).start()
+	imap.readline = new_readline.__get__(imap, imap.__class__)
+
 	typ, data = imap.fetch("1:*", "(FLAGS X-GM-LABELS X-GM-MSGID)")
+	new_readline.progressbar.finish()
+	imap.readline = old_readline
 	new_messages = []
 	if typ != "OK":
-		sys.exit(("Failed to discover new messages: %s" % typ))
+		sys.exit("Failed to discover new messages: %s" % typ)
+
 	print("Parsing message list and labels...")
 	for response in data:
 		imap_seq, gmail_id, labels, flags = parser.search(response).groups()
@@ -125,12 +141,15 @@ def tag_message(database, filename, labels):
 		database.end_atomic()
 		raise e
 
+def create_progressbar(text, total):
+	return ProgressBar(maxval=total, widgets=[text + ": ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", FileTransferSpeed(unit="emails")])
+
 def retag_old_messages(database, messages, destination):
 	print("Searching for local messages...")
 	old_messages = { os.path.basename(filename[0:filename.rfind(".gmail")]): destination + "/cur/" + filename for filename in os.listdir(destination + "/cur/") if ".gmail" in filename }
 	new_messages = []
 	i = 1
-	progressbar = ProgressBar(maxval=len(old_messages), widgets=["Retagging local messages: ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", FileTransferSpeed(unit="emails")])
+	progressbar = create_progressbar("Retagging local messages", len(old_messages))
 	progressbar.start()
 	for gmail_id, imap_seq, labels in messages:
 		if gmail_id in old_messages:
@@ -144,7 +163,7 @@ def retag_old_messages(database, messages, destination):
 
 def download_new_messages(imap, database, messages, destination):
 	i = 1
-	progressbar = ProgressBar(maxval=len(messages), widgets=["Downloading messages: ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", FileTransferSpeed(unit="emails")])
+	progressbar = create_progressbar("Downloading messages", len(messages))
 	progressbar.start()
 	for gmail_id, imap_seq, labels in messages:
 		temp = destination + "/tmp/" + str(gmail_id) + ".gmail"
