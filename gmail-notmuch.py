@@ -170,6 +170,8 @@ def create_progressbar(text, total):
 def retag_old_messages(database, messages, destination):
 	print("Searching for local messages...")
 	old_messages = { os.path.basename(filename[0:filename.rfind(".gmail")]): destination + "/cur/" + filename for filename in os.listdir(destination + "/cur/") if ".gmail" in filename }
+	if len(old_messages) == 0:
+		return
 	new_messages = []
 	i = 1
 	progressbar = create_progressbar("Retagging local messages", len(old_messages))
