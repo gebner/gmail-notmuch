@@ -1,2 +1,2 @@
-python-progressbar
+python-progressbar >= v2.3
 notmuch
