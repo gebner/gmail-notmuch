@@ -38,15 +38,18 @@ import notmuch
 from progressbar import *
 
 def main():
-	parser = OptionParser(usage="%prog --username/-u USERNAME --password/-p PASSWORD --verbose/-v", description="Slurps gmail messages with labels into a notmuch maildir.")
+	parser = OptionParser(usage="%prog --username/-u USERNAME --password/-p PASSWORD --silent/-s --debug/-d", description="Slurps gmail messages with labels into a notmuch maildir.")
 	parser.add_option("-u", "--username", action="store", type="string", metavar="USERNAME", help="Gmail username")
 	parser.add_option("-p", "--password", action="store", type="string", metavar="PASSWORD", help="Gmail password")
-	parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Verbose output")
+	parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Imap debugging output")
+	parser.add_option("-s", "--silent", action="store_true", dest="silent", default=False, help="Do not show progress information")
 	(options, args) = parser.parse_args()
 	if options.username is None or options.password is None:
 		parser.error("Username and password are required.")
 	if "@" not in options.username:
 		options.username += "@gmail.com"
+	if options.silent:
+		os.close(1)
 
 	try:
 		# Create should be True, but there's a bug at the moment.
@@ -91,7 +94,7 @@ def main():
 def login(options):
 	print("Logging in...")
 	imap = IMAP4_SSL("imap.gmail.com")
-	if options.verbose:
+	if options.debug:
 		imap.debug = 10
 	imap.login(options.username, options.password)
 	print("Selecting all mail...")
