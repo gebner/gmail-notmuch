@@ -202,6 +202,8 @@ def download_new_messages(imap, database, messages, destination):
 				sys.exit("Failed to download message gmail-%d/imap-%d" % (gmail_id, imap_seq))
 			f = open(temp, "w")
 			f.write(data[0][1])
+			f.flush()
+			os.fsync(f.fileno())
 			f.close()
 			os.link(temp, dest) # Because DJB says so...
 			os.unlink(temp)
