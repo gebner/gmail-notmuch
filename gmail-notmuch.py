@@ -165,7 +165,7 @@ def tag_message(database, filename, labels):
 		if message is not None:
 			database.remove_message(message)
 		database.end_atomic()
-		raise e
+		#raise e
 
 def create_progressbar(text, total):
 	return ProgressBar(maxval=total, widgets=[text + ": ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", FileTransferSpeed()])
