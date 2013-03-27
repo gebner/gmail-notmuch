@@ -201,7 +201,7 @@ def download_new_messages(imap, database, messages, destination):
 			if typ != "OK":
 				sys.exit("Failed to download message gmail-%d/imap-%d" % (gmail_id, imap_seq))
 			f = open(temp, "w")
-			f.write(data[0][1])
+			f.write(data[0][1].replace('\r\n', '\n'))
 			f.flush()
 			os.fsync(f.fileno())
 			f.close()
