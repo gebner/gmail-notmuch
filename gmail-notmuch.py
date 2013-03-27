@@ -168,7 +168,7 @@ def tag_message(database, filename, labels):
 		raise e
 
 def create_progressbar(text, total):
-	return ProgressBar(maxval=total, widgets=[text + ": ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", FileTransferSpeed(unit="emails")])
+	return ProgressBar(maxval=total, widgets=[text + ": ", SimpleProgress(), Bar(), Percentage(), " ", ETA(), " ", FileTransferSpeed()])
 
 def retag_old_messages(database, messages, destination):
 	print("Searching for local messages...")
