@@ -35,19 +35,20 @@ import os
 import shlex
 import re
 import notmuch
+import getpass
 from progressbar import *
 
 def main():
 	parser = OptionParser(usage="%prog --username/-u USERNAME --password/-p PASSWORD --silent/-s --debug/-d", description="Slurps gmail messages with labels into a notmuch maildir.")
 	parser.add_option("-u", "--username", action="store", type="string", metavar="USERNAME", help="Gmail username")
-	parser.add_option("-p", "--password", action="store", type="string", metavar="PASSWORD", help="Gmail password")
 	parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Imap debugging output")
 	parser.add_option("-s", "--silent", action="store_true", dest="silent", default=False, help="Do not show progress information")
 	(options, args) = parser.parse_args()
-	if options.username is None or options.password is None:
-		parser.error("Username and password are required.")
+	if options.username is None:
+		parser.error("Username is required.")
 	if "@" not in options.username:
 		options.username += "@gmail.com"
+	options.password = getpass.getpass()
 	if options.silent:
 		os.close(1)
 
